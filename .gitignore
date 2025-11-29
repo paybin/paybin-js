@@ -1,6 +1,7 @@
 # Dependencies
 node_modules/
-package-lock.json
+# Note: package-lock.json is NOT ignored for npm packages/libraries
+# It should be committed to ensure consistent dependencies in CI/CD
 yarn.lock
 pnpm-lock.yaml
 
