@@ -49,10 +49,10 @@
   ],
   "repository": {
     "type": "git",
-    "url": "https://github.com/yourusername/paybin-sdk.git"
+    "url": "https://github.com/paybin/paybin-js.git"
   },
   "bugs": {
-    "url": "https://github.com/yourusername/paybin-sdk/issues"
+    "url": "https://github.com/paybin/paybin-js/issues"
   },
-  "homepage": "https://github.com/yourusername/paybin-sdk#readme"
+  "homepage": "https://github.com/paybin/paybin-js#readme"
 }
