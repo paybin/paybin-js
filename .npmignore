@@ -1,0 +1,40 @@
+# Source files
+src/
+tsconfig.json
+tsup.config.ts
+
+# Development files
+examples/
+*.test.ts
+*.spec.ts
+.vscode/
+.idea/
+.claude/
+
+# Build tools
+.editorconfig
+.eslintrc*
+.prettierrc*
+
+# Git
+.git/
+.gitignore
+.gitattributes
+
+# CI/CD
+.github/
+.gitlab-ci.yml
+.travis.yml
+
+# Environment
+.env
+.env.*
+
+# Logs
+*.log
+npm-debug.log*
+
+# Misc
+*.md.backup
+TODO.md
+CONTRIBUTING.md
