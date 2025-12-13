@@ -10,6 +10,25 @@ export interface PaybinConfig {
   publicKey: string;
   secretKey: string;
   environment?: 'sandbox' | 'production';
+  /**
+   * RSA private key configuration for signing requests with RS512.
+   * When provided, all requests will include an X-Signature header.
+   *
+   * Options:
+   * - `key`: PEM-formatted private key string
+   * - `path`: File path to PEM private key file
+   * - `env`: Environment variable name containing the PEM key
+   *
+   * Only one option should be provided. Priority: key > path > env
+   */
+  signature?: {
+    /** PEM-formatted private key string */
+    key?: string;
+    /** File path to PEM private key file */
+    path?: string;
+    /** Environment variable name containing the PEM key (default: PAYBIN_SIGNATURE_PRIVATE_KEY) */
+    env?: string;
+  };
 }
 
 export type Environment = 'sandbox' | 'production';

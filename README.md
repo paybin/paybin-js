@@ -62,10 +62,30 @@ interface PaybinConfig {
   publicKey: string;      // Your Paybin public key
   secretKey: string;      // Your Paybin secret key
   environment?: 'sandbox' | 'production'; // Default: 'sandbox'
+  signature?: {           // Optional: RS512 request signing
+    key?: string;         // PEM-formatted private key
+    path?: string;        // File path to PEM key file
+    env?: string;         // Environment variable name (default: PAYBIN_SIGNATURE_PRIVATE_KEY)
+  };
 }
 ```
 
 Get your API keys from [Paybin Portfolio](https://portfolio.paybin.io).
+
+### Request Signing (RS512)
+
+For enhanced security, you can sign all requests with RS512. When configured, every request will include an `X-Signature` header containing the RS512 signature of the request body.
+
+```typescript
+const paybin = new Paybin({
+  publicKey: process.env.PAYBIN_PUBLIC_KEY!,
+  secretKey: process.env.PAYBIN_SECRET_KEY!,
+  environment: 'production',
+  signature: { env: 'PAYBIN_SIGNATURE_PRIVATE_KEY' }
+});
+```
+
+See [Request Signing Security](#request-signing-security) for detailed configuration options.
 
 ---
 
@@ -479,6 +499,201 @@ Production URL: `https://gateway.paybin.io`
 6. **Enable 2FA** - Use two-factor authentication for withdrawals
 7. **Whitelist IPs** - Configure IP whitelist in Paybin dashboard
 8. **Test thoroughly** - Use sandbox environment for testing
+9. **Enable request signing** - Use RS512 signatures for production environments
+
+---
+
+## Request Signing Security
+
+When request signing is enabled, the SDK signs every request body using RS512 (RSA with SHA-512) and includes the signature in the `X-Signature` header. This provides an additional layer of security to ensure request integrity and authenticity.
+
+### Generating RSA Key Pair
+
+Generate a 2048-bit (minimum) or 4096-bit (recommended) RSA key pair:
+
+```bash
+# Generate private key
+openssl genrsa -out private-key.pem 4096
+
+# Extract public key (share this with Paybin)
+openssl rsa -in private-key.pem -pubout -out public-key.pem
+```
+
+### Configuration Options
+
+The SDK supports three methods for providing the private key, with the following priority: `key` > `path` > `env`
+
+#### Option 1: Environment Variable (Recommended for most deployments)
+
+```typescript
+// .env file
+// PAYBIN_SIGNATURE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\nMIIEvgIBADA..."
+
+const paybin = new Paybin({
+  publicKey: process.env.PAYBIN_PUBLIC_KEY!,
+  secretKey: process.env.PAYBIN_SECRET_KEY!,
+  signature: { env: 'PAYBIN_SIGNATURE_PRIVATE_KEY' } // or omit 'env' to use default
+});
+```
+
+#### Option 2: File Path (Recommended for Kubernetes/Docker)
+
+```typescript
+const paybin = new Paybin({
+  publicKey: process.env.PAYBIN_PUBLIC_KEY!,
+  secretKey: process.env.PAYBIN_SECRET_KEY!,
+  signature: { path: '/etc/secrets/paybin/private-key.pem' }
+});
+```
+
+#### Option 3: Direct Key (Use with caution)
+
+```typescript
+// Only use this when loading from a secure source
+const paybin = new Paybin({
+  publicKey: process.env.PAYBIN_PUBLIC_KEY!,
+  secretKey: process.env.PAYBIN_SECRET_KEY!,
+  signature: { key: privateKeyFromSecretManager }
+});
+```
+
+### Secret Management Integration
+
+For production environments, use a dedicated secret manager to store and retrieve your private key.
+
+#### AWS Secrets Manager
+
+```typescript
+import { SecretsManagerClient, GetSecretValueCommand } from '@aws-sdk/client-secrets-manager';
+import { Paybin } from '@paybin/sdk';
+
+async function createPaybinClient() {
+  const client = new SecretsManagerClient({ region: 'us-east-1' });
+
+  const response = await client.send(
+    new GetSecretValueCommand({ SecretId: 'paybin/signature-private-key' })
+  );
+
+  return new Paybin({
+    publicKey: process.env.PAYBIN_PUBLIC_KEY!,
+    secretKey: process.env.PAYBIN_SECRET_KEY!,
+    signature: { key: response.SecretString }
+  });
+}
+```
+
+#### Google Cloud Secret Manager
+
+```typescript
+import { SecretManagerServiceClient } from '@google-cloud/secret-manager';
+import { Paybin } from '@paybin/sdk';
+
+async function createPaybinClient() {
+  const client = new SecretManagerServiceClient();
+  const projectId = process.env.GOOGLE_CLOUD_PROJECT;
+
+  const [version] = await client.accessSecretVersion({
+    name: `projects/${projectId}/secrets/paybin-signature-key/versions/latest`,
+  });
+
+  const privateKey = version.payload?.data?.toString();
+
+  return new Paybin({
+    publicKey: process.env.PAYBIN_PUBLIC_KEY!,
+    secretKey: process.env.PAYBIN_SECRET_KEY!,
+    signature: { key: privateKey }
+  });
+}
+```
+
+#### HashiCorp Vault
+
+```typescript
+import vault from 'node-vault';
+import { Paybin } from '@paybin/sdk';
+
+async function createPaybinClient() {
+  const vaultClient = vault({
+    apiVersion: 'v1',
+    endpoint: process.env.VAULT_ADDR,
+    token: process.env.VAULT_TOKEN
+  });
+
+  const result = await vaultClient.read('secret/data/paybin');
+  const privateKey = result.data.data.signaturePrivateKey;
+
+  return new Paybin({
+    publicKey: process.env.PAYBIN_PUBLIC_KEY!,
+    secretKey: process.env.PAYBIN_SECRET_KEY!,
+    signature: { key: privateKey }
+  });
+}
+```
+
+#### Azure Key Vault
+
+```typescript
+import { SecretClient } from '@azure/keyvault-secrets';
+import { DefaultAzureCredential } from '@azure/identity';
+import { Paybin } from '@paybin/sdk';
+
+async function createPaybinClient() {
+  const credential = new DefaultAzureCredential();
+  const vaultUrl = `https://${process.env.AZURE_VAULT_NAME}.vault.azure.net`;
+  const client = new SecretClient(vaultUrl, credential);
+
+  const secret = await client.getSecret('paybin-signature-private-key');
+
+  return new Paybin({
+    publicKey: process.env.PAYBIN_PUBLIC_KEY!,
+    secretKey: process.env.PAYBIN_SECRET_KEY!,
+    signature: { key: secret.value }
+  });
+}
+```
+
+### Kubernetes Secret Mount
+
+```yaml
+# kubernetes/deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: my-app
+spec:
+  template:
+    spec:
+      containers:
+        - name: app
+          volumeMounts:
+            - name: paybin-secrets
+              mountPath: /etc/secrets/paybin
+              readOnly: true
+      volumes:
+        - name: paybin-secrets
+          secret:
+            secretName: paybin-signature-key
+```
+
+```typescript
+// Application code
+const paybin = new Paybin({
+  publicKey: process.env.PAYBIN_PUBLIC_KEY!,
+  secretKey: process.env.PAYBIN_SECRET_KEY!,
+  signature: { path: '/etc/secrets/paybin/private-key.pem' }
+});
+```
+
+### Security Checklist
+
+- [ ] Use 4096-bit RSA keys for production
+- [ ] Never commit private keys to version control
+- [ ] Never hardcode private keys in source code
+- [ ] Use environment variables or secret managers
+- [ ] Rotate keys periodically
+- [ ] Restrict file permissions: `chmod 600 private-key.pem`
+- [ ] Use separate keys for sandbox and production
+- [ ] Monitor for unauthorized key usage
 
 ---
 
