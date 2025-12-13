@@ -507,17 +507,9 @@ Production URL: `https://gateway.paybin.io`
 
 When request signing is enabled, the SDK signs every request body using RS512 (RSA with SHA-512) and includes the signature in the `X-Signature` header. This provides an additional layer of security to ensure request integrity and authenticity.
 
-### Generating RSA Key Pair
+### Getting Your Private Key
 
-Generate a 2048-bit (minimum) or 4096-bit (recommended) RSA key pair:
-
-```bash
-# Generate private key
-openssl genrsa -out private-key.pem 4096
-
-# Extract public key (share this with Paybin)
-openssl rsa -in private-key.pem -pubout -out public-key.pem
-```
+You can obtain your private key from the [Paybin Portfolio](https://portfolio.paybin.io). Navigate to your API settings to download or copy your RSA private key.
 
 ### Configuration Options
 
@@ -719,10 +711,4 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 
 ## Changelog
 
-### 1.0.0
-- Initial release
-- Full TypeScript support
-- Deposit, Withdraw, and Balance APIs
-- Webhook verification utilities
-- Complete type definitions
-- Support for all Paybin networks and cryptocurrencies
+See [CHANGELOG.md](CHANGELOG.md) for a detailed list of changes.
