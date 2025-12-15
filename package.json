@@ -1,6 +1,6 @@
 {
   "name": "@paybin/sdk",
-  "version": "1.0.0",
+  "version": "1.0.2",
   "description": "Official Paybin SDK for Node.js and TypeScript - Easily integrate cryptocurrency payments",
   "main": "./dist/index.js",
   "module": "./dist/index.mjs",
